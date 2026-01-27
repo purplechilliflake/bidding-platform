@@ -1,0 +1,61 @@
+:root {
+    --bg: #0f172a;
+    --card: #1e293b;
+    --accent: #3b82f6;
+    --green: #22c55e;
+    --red: #ef4444;
+  }
+  
+  body { background: var(--bg); color: white; font-family: sans-serif; margin: 0; }
+  
+  .dashboard { padding: 40px; }
+  
+  /* The Item Grid */
+  .auction-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 24px;
+  }
+  
+  /* The Card */
+  .card {
+    background: var(--card);
+    border: 1px solid #334155;
+    border-radius: 12px;
+    padding: 24px;
+    position: relative;
+    transition: all 0.3s;
+  }
+  
+  /* Visual Feedback: Green Flash Animation */
+  @keyframes flash-green {
+    0% { border-color: var(--green); box-shadow: 0 0 15px var(--green); }
+    100% { border-color: #334155; }
+  }
+  .flash { animation: flash-green 0.8s ease-out; }
+  
+  /* Visual Feedback: Winning/Outbid States */
+  .winning-badge { background: var(--green); padding: 4px 8px; border-radius: 4px; font-size: 10px; position: absolute; top: 10px; left: 10px; }
+  .state-outbid { border-color: var(--red) !important; background: #2d1a1a; }
+  
+  .price { font-size: 2rem; font-weight: bold; margin: 10px 0; }
+  button { width: 100%; background: var(--accent); color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+  button:disabled { background: #475569; }
+
+
+  .timer-badge {
+    background: rgba(0, 0, 0, 0.4);
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.9rem;
+    color: #94a3b8; /* Muted grey */
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  
+  .timer-display {
+    color: #fbbf24; /* Gold/Yellow color for the clock */
+    font-weight: bold;
+  }
