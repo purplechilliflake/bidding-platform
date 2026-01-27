@@ -4,7 +4,9 @@ import { io } from 'socket.io-client';
 import './App.css';
 
 // Connect to the backend we built earlier
-const socket = io("http://localhost:5050");
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
+const socket = io(BACKEND_URL);
+
 
 function App() {
   const [items, setItems] = useState([]);
@@ -13,7 +15,7 @@ function App() {
 
   useEffect(() => {
     // 1. Get initial items via REST API
-    axios.get("http://localhost:5050/items")
+    axios.get(`${BACKEND_URL}/items`)
       .then(res => setItems(res.data))
       .catch(err => console.error("Error fetching items:", err));
 
