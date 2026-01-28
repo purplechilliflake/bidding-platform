@@ -1,9 +1,23 @@
-# We will use a Compose file instead for multi-service support
-# But here is the Backend Dockerfile as a sample
-FROM node:18
+# 1. Use Node as base
+FROM node:18-bullseye-slim
+
+# 2. Install Redis Server
+RUN apt-get update && apt-get install -y redis-server && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
-COPY backend/package*.json ./
+
+# 3. Install dependencies
+COPY package*.json ./
 RUN npm install
-COPY backend/ .
+
+# 4. Copy backend code
+COPY . .
+
+# 5. Create a start script to run both Redis and Node
+RUN echo "#!/bin/sh\nredis-server --daemonize yes\nnode server.js" > start.sh
+RUN chmod +x start.sh
+
 EXPOSE 5050
-CMD ["node", "server.js"]
+
+# 6. Run the script
+CMD ["./start.sh"]

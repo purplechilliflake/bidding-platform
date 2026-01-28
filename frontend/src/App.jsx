@@ -1,132 +1,176 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { io } from 'socket.io-client';
 import './App.css';
 
-// Connect to the backend we built earlier
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
-const socket = io(BACKEND_URL);
-
+const socket = io("http://localhost:5050");
 
 function App() {
   const [items, setItems] = useState([]);
   const [userId] = useState("User_" + Math.floor(Math.random() * 1000));
-  const [flashId, setFlashId] = useState(null); // Track which card should flash
+  const [flashId, setFlashId] = useState(null);
 
   useEffect(() => {
-    // 1. Get initial items via REST API
-    axios.get(`${BACKEND_URL}/items`)
+    axios.get("http://localhost:5050/items")
       .then(res => setItems(res.data))
-      .catch(err => console.error("Error fetching items:", err));
+      .catch(err => console.error("Error:", err));
 
-    // 2. Listen for real-time bid updates
     socket.on("UPDATE_BID", (data) => {
-      setItems(prevItems => prevItems.map(item => {
+      setItems(prev => prev.map(item => {
         if (item.id === data.itemId) {
-          // Trigger the Green Flash
           setFlashId(data.itemId);
           setTimeout(() => setFlashId(null), 800);
-          
-          // Update the price and the last bidder
           return { ...item, currentBid: data.newBid, lastBidder: data.bidderId };
         }
         return item;
       }));
     });
 
-    return () => socket.off(); // Cleanup connection on close
+    return () => socket.off();
   }, []);
 
-  // 3. Function to send a bid to the server
-  const placeBid = (id, price) => {
-    socket.emit("BID_PLACED", { 
-      itemId: id, 
-      bidAmount: price + 10, 
-      userId 
-    });
+  const placeBid = (id, currentPrice) => {
+    socket.emit("BID_PLACED", { itemId: id, bidAmount: currentPrice + 10, userId });
   };
 
   return (
-    <div className="dashboard">
-      <header style={{ marginBottom: '40px' }}>
-        <h1>Velocity Auction</h1>
-        <p>Welcome, <strong>{userId}</strong></p>
+    <div className="app-container">
+      <header className="main-header">
+        <div className="header-left">
+          <div className="logo-wrapper">
+            <i className="fa-solid fa-coins"></i>
+            <h1>PENNY<span>SOCIAL</span></h1>
+          </div>
+          <p className="tagline">
+            <span className="status-dot"></span>
+            Real-time bidding engine active.
+          </p>
+        </div>
+
+        <div className="header-right">
+          <div className="balance-card">
+            <span className="label">Balance Available</span>
+            <span className="amount">$150,000</span>
+          </div>
+
+          <div className="profile-section">
+            <div className="user-meta">
+              <span className="pro-tag">{userId}</span>
+              <span className="account-type">Pro Account</span>
+            </div>
+            <div className="avatar-circle">
+              <i className="fa-solid fa-user"></i>
+            </div>
+          </div>
+        </div>
       </header>
 
-      <div className="auction-grid">
-        {items.map(item => {
-            console.log(item);
-          const isWinning = item.lastBidder === userId;
-          const isOutbid = item.lastBidder !== userId && item.lastBidder !== 'System';
-
-          return (
-            <div key={item.id} className={`card ${flashId === item.id ? 'flash' : ''} ${isOutbid ? 'state-outbid' : ''}`}>
-              
-              {isWinning && <div className="winning-badge">WINNING</div>}
-              
-              <h3>{item.title}</h3>
-              <div className={`price ${isOutbid ? 'text-outbid' : ''}`}>${item.currentBid}</div>
-              
-              <Countdown targetTime={Number(item.auctionEndTime)} />
-
-              <button onClick={() => placeBid(item.id, item.currentBid)} disabled={isWinning}>
-                {isWinning ? "Highest Bidder" : "Bid +$10"}
-              </button>
-            </div>
-          );
-        })}
+      <div className="dashboard">
+        
+        <div className="auction-grid">
+          {items.map(item => (
+            <AuctionCard 
+              key={item.id} 
+              item={item} 
+              currentUser={{ id: userId }} 
+              onBid={placeBid}
+              isFlashing={flashId === item.id}
+            />
+          ))}
+        </div>
       </div>
     </div>
   );
 }
 
-// 4. Countdown Component (We will define this next)
-function Countdown({ targetTime }) {
-  const [timeLeft, setTimeLeft] = useState(targetTime - Date.now());
-    console.log(targetTime);
+const AuctionCard = ({ item, currentUser, onBid, isFlashing }) => {
+  const [timeLeft, setTimeLeft] = useState(Number(item.auctionEndTime) - Date.now());
+  const prevBidderRef = useRef(item.lastBidder);
+
+  // Update internal ref when item changes
   useEffect(() => {
-    const timer = setInterval(() => setTimeLeft(targetTime - Date.now()), 1000);
-    return () => clearInterval(timer);
-  }, [targetTime]);
-
-  if (timeLeft <= 0) return <div style={{color: 'red'}}>CLOSED</div>;
-
-  const m = Math.floor((timeLeft % 3600000) / 60000);
-  const s = Math.floor((timeLeft % 60000) / 1000);
-
-  return <div className="timer">Ends in: {m}m {s}s</div>;
-}
-
-function Timer({ endTime }) {
-    const [timeLeft, setTimeLeft] = useState(endTime - Date.now());
-  
-    useEffect(() => {
-      // Update every 1 second
-      const interval = setInterval(() => {
-        setTimeLeft(endTime - Date.now());
-      }, 1000);
-  
-      return () => clearInterval(interval);
-    }, [endTime]);
-  
-    // If time is up
-    if (timeLeft <= 0) {
-      return <span style={{ color: '#ef4444', fontWeight: 'bold' }}>CLOSED</span>;
+    if (item.lastBidder !== currentUser.id && item.lastBidder !== 'System') {
+        // This is a simplified way to detect if I WAS the winner and just lost it
     }
-  
-    // Convert milliseconds to HH:MM:SS
-    const hours = Math.floor(timeLeft / 3600000);
-    const minutes = Math.floor((timeLeft % 3600000) / 60000);
-    const seconds = Math.floor((timeLeft % 60000) / 1000);
-  
-    // Helper to add a leading zero (e.g., 05 instead of 5)
-    const pad = (num) => String(num).padStart(2, '0');
-  
-    return (
-      <span className="timer-display">
-        {hours > 0 && `${pad(hours)}:`}{pad(minutes)}:{pad(seconds)}
-      </span>
-    );
-  }
+    prevBidderRef.current = item.lastBidder;
+  }, [item.lastBidder, currentUser.id]);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTimeLeft(Number(item.auctionEndTime) - Date.now());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [item.auctionEndTime]);
+
+  const isAuctionOver = timeLeft <= 0;
+  const isHighestBidder = item.lastBidder === currentUser.id;
+  // Outbid: Someone else leads, but last bid wasn't 'System'
+  const isOutbid = !isHighestBidder && item.lastBidder !== 'System' && !isAuctionOver;
+
+  const formatTime = (ms) => {
+    if (ms <= 0) return "0:00";
+    const m = Math.floor((ms % 3600000) / 60000);
+    const s = Math.floor((ms % 60000) / 1000);
+    return `${m}:${s < 10 ? '0' + s : s}`;
+  };
+
+  return (
+    <div className={`auction-card ${isAuctionOver ? 'is-over' : ''}`}>
+      {/* Badges */}
+      <div className="badge-container">
+        {isHighestBidder && !isAuctionOver && (
+          <span className="badge bg-green">WINNING</span>
+        )}
+        {isOutbid && (
+          <span className="badge bg-red">OUTBID</span>
+        )}
+        {isAuctionOver && (
+          <span className="badge bg-slate">CLOSED</span>
+        )}
+      </div>
+
+      <div className="img-wrapper">
+        <img 
+          src={item.imageUrl || `https://picsum.photos/seed/${item.id}/400/300`} 
+          alt={item.title} 
+          className="item-img" 
+        />
+      </div>
+
+      <div className={`card-body ${isFlashing ? 'flash-effect' : ''}`}>
+        <div className="card-header">
+          <h3 className="item-title">{item.title}</h3>
+          <div className={`timer-container ${timeLeft < 60000 ? 'timer-urgent' : 'timer-normal'}`}>
+            <span style={{ fontSize: '0.8rem' }}>⏱</span>
+            <span>{formatTime(timeLeft)}</span>
+          </div>
+        </div>
+        
+        <p className="item-desc">{item.description || "Premium collector's item. Verified and authenticated."}</p>
+
+        <div className="card-footer">
+          <div>
+            <p className="bid-label">Current Bid</p>
+            <p className="bid-price">${item.currentBid.toLocaleString()}</p>
+          </div>
+          
+          <button
+            onClick={() => onBid(item.id, item.currentBid)}
+            disabled={isAuctionOver || isHighestBidder}
+            className={`btn ${
+              isAuctionOver 
+                ? 'btn-closed' 
+                : isHighestBidder 
+                  ? 'btn-lead' 
+                  : 'btn-bid'
+            }`}
+          >
+            {isAuctionOver ? 'Closed' : isHighestBidder ? 'You Lead' : 'Bid +$10'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export default App;

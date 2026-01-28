@@ -1,61 +1,220 @@
 :root {
-    --bg: #0f172a;
-    --card: #1e293b;
-    --accent: #3b82f6;
-    --green: #22c55e;
-    --red: #ef4444;
+    --slate-900: #0f172a;
+    --slate-800: #1e293b;
+    --slate-700: #334155;
+    --slate-600: #475569;
+    --slate-500: #64748b;
+    --slate-400: #94a3b8;
+    --indigo-600: #4f46e5;
+    --indigo-500: #6366f1;
+    --indigo-400: #818cf8;
+    --green-600: #16a34a;
+    --green-500: #22c55e;
+    --red-500: #ef4444;
+    --red-400: #f87171;
   }
   
-  body { background: var(--bg); color: white; font-family: sans-serif; margin: 0; }
+  body {
+    background-color: var(--slate-900);
+    color: white;
+    font-family: system-ui, -apple-system, sans-serif;
+    margin: 0;
+  }
   
-  .dashboard { padding: 40px; }
-  
-  /* The Item Grid */
+  .dashboard { padding: 2rem; max-width: 1400px; margin: 0 auto; }
   .auction-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 24px;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1.5rem;
   }
   
-  /* The Card */
-  .card {
-    background: var(--card);
-    border: 1px solid #334155;
-    border-radius: 12px;
-    padding: 24px;
+  /* Card Container */
+  .auction-card {
     position: relative;
-    transition: all 0.3s;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--slate-800);
+    border-radius: 0.75rem;
+    overflow: hidden;
+    border: 1px solid var(--slate-700);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+    transition: all 0.3s ease;
   }
   
-  /* Visual Feedback: Green Flash Animation */
+  .auction-card:hover { border-color: rgba(79, 70, 229, 0.5); }
+  .is-over { opacity: 0.75; filter: grayscale(1); }
+  
+  /* Badges */
+  .badge-container { position: absolute; top: 1rem; right: 1rem; z-index: 10; display: flex; flex-direction: column; gap: 0.5rem; }
+  .badge { font-size: 0.75rem; font-weight: bold; padding: 0.25rem 0.75rem; border-radius: 9999px; color: white; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+  .bg-green { background-color: var(--green-500); animation: bounce 1s infinite; }
+  .bg-red { background-color: var(--red-500); animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+  .bg-slate { background-color: var(--slate-600); }
+  
+  /* Image */
+  .img-wrapper { height: 12rem; overflow: hidden; }
+  .item-img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s; }
+  .auction-card:hover .item-img { transform: scale(1.1); }
+  
+  /* Content */
+  .card-body { padding: 1.25rem; flex: 1; display: flex; flex-direction: column; }
+  .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem; }
+  .item-title { font-size: 1.25rem; font-weight: bold; color: white; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 0.5rem; }
+  .item-desc { color: var(--slate-400); font-size: 0.875rem; margin-bottom: 1rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  
+  /* Timer */
+  .timer-container { display: flex; align-items: center; gap: 0.25rem; font-family: monospace; font-weight: bold; }
+  .timer-urgent { color: var(--red-400); animation: pulse 2s infinite; }
+  .timer-normal { color: var(--indigo-400); }
+  
+  /* Footer */
+  .card-footer { margin-top: auto; pt: 1rem; border-top: 1px solid var(--slate-700); display: flex; align-items: flex-end; justify-content: space-between; padding-top: 1rem;}
+  .bid-label { color: var(--slate-500); font-size: 0.75rem; text-transform: uppercase; font-weight: 600; margin: 0; }
+  .bid-value { font-size: 1.875rem; font-weight: 900; color: white; margin: 0; }
+  
+  /* Buttons */
+  .btn { padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: bold; border: none; cursor: pointer; transition: all 0.2s; color: white; }
+  .btn:active { transform: scale(0.95); }
+  .btn-bid { background-color: var(--indigo-600); box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2); }
+  .btn-bid:hover { background-color: var(--indigo-500); }
+  .btn-lead { background-color: var(--green-600); cursor: default; pointer-events: none; }
+  .btn-closed { background-color: var(--slate-700); color: var(--slate-500); cursor: not-allowed; }
+  
+  /* Flash Animation */
   @keyframes flash-green {
-    0% { border-color: var(--green); box-shadow: 0 0 15px var(--green); }
-    100% { border-color: #334155; }
+    0% { background-color: rgba(34, 197, 94, 0.2); }
+    100% { background-color: transparent; }
   }
-  .flash { animation: flash-green 0.8s ease-out; }
+  .flash-effect { animation: flash-green 0.8s ease-out; }
   
-  /* Visual Feedback: Winning/Outbid States */
-  .winning-badge { background: var(--green); padding: 4px 8px; border-radius: 4px; font-size: 10px; position: absolute; top: 10px; left: 10px; }
-  .state-outbid { border-color: var(--red) !important; background: #2d1a1a; }
+  @keyframes bounce {
+    0%, 100% { transform: translateY(-25%); animation-timing-function: cubic-bezier(0.8, 0, 1, 1); }
+    50% { transform: translateY(0); animation-timing-function: cubic-bezier(0, 0, 0.2, 1); }
+  }
   
-  .price { font-size: 2rem; font-weight: bold; margin: 10px 0; }
-  button { width: 100%; background: var(--accent); color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: bold; }
-  button:disabled { background: #475569; }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: .5; }
+  }
 
-
-  .timer-badge {
-    background: rgba(0, 0, 0, 0.4);
-    padding: 4px 10px;
-    border-radius: 6px;
-    font-family: 'Courier New', Courier, monospace;
-    font-size: 0.9rem;
-    color: #94a3b8; /* Muted grey */
+  /* --- NEW HEADER STYLES --- */
+.main-header {
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    border-bottom: 1px solid #334155;
+    padding: 1.5rem 4rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+  }
+  
+  .header-left .logo-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  
+  .header-left .logo-wrapper i {
+    font-size: 2rem;
+    color: #6366f1;
+    background: rgba(99, 102, 241, 0.1);
+    padding: 10px;
+    border-radius: 12px;
+  }
+  
+  .header-left h1 {
+    font-size: 1.75rem;
+    font-weight: 800;
+    letter-spacing: -0.05em;
+    margin: 0;
+    text-transform: uppercase;
+  }
+  
+  .header-left h1 span {
+    color: #6366f1; 
+  }
+  
+  .header-left .tagline {
+    color: #94a3b8;
+    font-size: 0.85rem;
+    margin-top: 4px;
     display: flex;
     align-items: center;
     gap: 6px;
   }
   
-  .timer-display {
-    color: #fbbf24; /* Gold/Yellow color for the clock */
-    font-weight: bold;
+  .status-dot {
+    height: 8px;
+    width: 8px;
+    background-color: #22c55e;
+    border-radius: 50%;
+    display: inline-block;
+    box-shadow: 0 0 8px #22c55e;
+  }
+  
+  /* Header Right - Balance and Profile */
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 2.5rem;
+  }
+  
+  .balance-card {
+    text-align: right;
+  }
+  
+  .balance-card .label {
+    display: block;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  
+  .balance-card .amount {
+    font-size: 1.75rem;
+    font-weight: 900;
+    color: #fff;
+  }
+  
+  .profile-section {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+  
+  .user-meta {
+    text-align: right;
+  }
+  
+  .user-meta .pro-tag {
+    font-size: 0.85rem;
+    font-weight: 800;
+    color: #fff;
+    display: block;
+  }
+  
+  .user-meta .account-type {
+    font-size: 0.7rem;
+    color: #6366f1;
+    font-weight: 700;
+  }
+  
+  .avatar-circle {
+    width: 48px;
+    height: 48px;
+    background-color: #334155;
+    border: 2px solid #475569;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #94a3b8;
+    font-size: 1.25rem;
+  }
+  
+  @media (max-width: 768px) {
+    .main-header { padding: 1.5rem; flex-direction: column; gap: 1rem; align-items: flex-start; }
+    .header-right { width: 100%; justify-content: space-between; }
   }

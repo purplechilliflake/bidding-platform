@@ -32,36 +32,47 @@ app.use(cors({ origin: "*" }));
 // seeding bidding items to the shelves
 // 1. Seed with clear time logic
 async function seedItems() {
+    // Wipe everything first so we don't have duplicate IDs
     await redisClient.flushAll(); 
     
-    // Define standard offsets
+    // Time Constants
+    const MINS_45 = 45 * 60 * 1000;
     const ONE_HOUR = 60 * 60 * 1000;
     const TWO_HOURS = 2 * ONE_HOUR;
+    const THREE_HOURS = 3 * ONE_HOUR;
 
     const items = [
-        { id: '1', title: "Vintage Rolex", currentBid: 1000, duration: ONE_HOUR },
-        { id: '2', title: "Charizard Card", currentBid: 500, duration: TWO_HOURS }
+        { id: '1', title: "Vintage Rolex Submariner", currentBid: 1000, duration: ONE_HOUR, desc: "Pristine 1970s model with original box." },
+        { id: '2', title: "Holographic Charizard 1st Ed", currentBid: 500, duration: TWO_HOURS, desc: "Gem Mint 10. Rare collector item from 1999." },
+        { id: '3', title: "Vintage 1970s Leica M4", currentBid: 1450, duration: TWO_HOURS + MINS_45, desc: "A masterpiece of mechanical engineering." },
+        { id: '4', title: "SpaceX Starship Fragment", currentBid: 680, duration: MINS_45, desc: "Authenticated piece of heat shield from SN15." },
+        { id: '5', title: "Bored Ape Yacht Club #441", currentBid: 92000, duration: THREE_HOURS, desc: "Exclusive digital collectible. Transferred instantly." }
     ];
 
     for (const item of items) {
         const itemKey = `item:${item.id}`;
-        const endTime = Date.now() + item.duration;  // Standard Unix Timestamp
-        console.log(endTime.toString());
+        const priceKey = `item:${item.id}:price`;
+        const endTimeValue = Date.now() + item.duration;
 
+        // Store metadata in a Hash
         await redisClient.hSet(itemKey, {
             title: item.title,
             currentBid: item.currentBid.toString(),
-            auctionEndTime: endTime.toString(), // We store the number as a string in Redis
-            lastBidder: 'System'
+            auctionEndTime: endTimeValue.toString(),
+            lastBidder: 'System',
+            description: item.desc 
         });
+
+        // Store the price in a String for atomic bidding
+        await redisClient.set(priceKey, item.currentBid.toString());
     }
-    console.log("✅ Redis seeded with Standard Timestamps");
+    console.log("✅ Redis seeded");
 }
 
 // 2. API Route with Human-Readable Time
 app.get('/items', async (req, res) => {
     try {
-        const keys = await redisClient.keys('item:[0-9]*');
+        const keys = await redisClient.keys('item:*');
         console.log(keys);
         const items = [];
     
@@ -77,7 +88,8 @@ app.get('/items', async (req, res) => {
                 id: key.split(':')[1],
                 title: itemData.title,
                 currentBid: parseInt(itemData.currentBid),
-                auctionEndTime: endTimeMs
+                auctionEndTime: endTimeMs,
+                description: itemData.description 
             });
         }
         res.json(items);
@@ -93,47 +105,36 @@ io.on('connection', (socket) => {
     // When a user sends a bid
     socket.on('BID_PLACED', async (data) => {
         const { itemId, bidAmount, userId } = data;
-        const itemKey = `item:${itemId}:price`;
-
+        const itemKey = `item:${itemId}`; 
         try {
-            // 1. WATCH the key to detect changes (Concurrency Control)
             await redisClient.watch(itemKey);
-
-            // 2. Get the current bid from Redis
-            const currentBid = await redisClient.get(itemKey);
-            const currentPrice = parseInt(currentBid) || 0;
-
-            // 3. Validation
+    
+            // Get the current bid from the Hash
+            const currentBidStr = await redisClient.hGet(itemKey, 'currentBid');
+            const currentPrice = parseInt(currentBidStr) || 0;
+    
             if (bidAmount <= currentPrice) {
                 await redisClient.unwatch();
                 return socket.emit('error', { message: 'Bid too low!' });
             }
-
-            // 4. Try to update Redis atomically
+    
+            // Update the Hash fields atomically
             const results = await redisClient
                 .multi()
-                .set(itemKey, bidAmount)
-                .set(`item:${itemId}:lastBidder`, userId)
+                .hSet(itemKey, 'currentBid', bidAmount.toString())
+                .hSet(itemKey, 'lastBidder', userId)
                 .exec();
-
+    
             if (results === null) {
-                // Someone else beat us to it between the WATCH and the EXEC!
-                return socket.emit('error', { message: 'Outbid! Someone else just placed a bid.' });
+                return socket.emit('error', { message: 'Outbid! Try again.' });
             }
-
-            // 5. Success! Tell EVERYONE connected about the new bid
-            io.emit('UPDATE_BID', {
-                itemId,
-                newBid: bidAmount,
-                bidderId: userId
-            });
-
+    
+            io.emit('UPDATE_BID', { itemId, newBid: bidAmount, bidderId: userId });
         } catch (error) {
             console.error("Bidding Error:", error);
             socket.emit('error', { message: 'Internal Server Error' });
         }
     });
-
     socket.on('disconnect', () => {
         console.log('User disconnected');
     });
