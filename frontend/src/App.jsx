@@ -100,9 +100,21 @@ const AuctionCard = ({ item, currentUser, onBid, isFlashing }) => {
 
   const formatTime = (ms) => {
     if (ms <= 0) return "0:00";
-    const m = Math.floor((ms % 3600000) / 60000);
-    const s = Math.floor((ms % 60000) / 1000);
-    return `${m}:${s < 10 ? '0' + s : s}`;
+  
+    const s = Math.floor((ms / 1000) % 60);
+    const m = Math.floor((ms / (1000 * 60)) % 60);
+    const h = Math.floor((ms / (1000 * 60 * 60)) % 24);
+    const d = Math.floor(ms / (1000 * 60 * 60 * 24));
+  
+    const pad = (num) => num.toString().padStart(2, '0');
+  
+    if (d > 0) {
+      return `${d}d ${h}:${pad(m)}:${pad(s)}`;
+    } else if (h > 0) {
+      return `${h}:${pad(m)}:${pad(s)}`;
+    } else {
+      return `${m}:${pad(s)}`;
+    }
   };
 
   const handleCustomBid = (e) => {
