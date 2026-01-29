@@ -13,8 +13,9 @@ const server = http.createServer(app);
 
 // 1. Initialize Redis Client
 const redisClient = redis.createClient({
-    url: process.env.REDIS_URL
+    url: process.env.REDIS_URL || 'redis://localhost:6379'
 });
+console.log(process.env.REDIS_URL);
 
 redisClient.on('error', (err) => console.log('Redis Client Error', err));
 
