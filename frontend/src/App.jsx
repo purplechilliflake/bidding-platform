@@ -3,7 +3,9 @@ import axios from 'axios';
 import { io } from 'socket.io-client';
 import './App.css';
 
-const socket = io("http://localhost:5050");
+// const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
+const BACKEND_URL = "https://bidding-platform-eqba.onrender.com/";
+const socket = io(BACKEND_URL);
 
 function App() {
   const [items, setItems] = useState([]);
@@ -11,8 +13,10 @@ function App() {
   const [flashId, setFlashId] = useState(null);
 
   useEffect(() => {
-    axios.get("http://localhost:5050/items")
-      .then(res => setItems(res.data))
+    axios.get(`${BACKEND_URL}items`)
+      .then(res => {setItems(res.data);
+    console.log(`${BACKEND_URL}items`);
+  })
       .catch(err => console.error("Error:", err));
 
     socket.on("UPDATE_BID", (data) => {
@@ -67,17 +71,21 @@ function App() {
       </header>
 
       <div className="dashboard">
-        <div className="auction-grid">
-          {items.map(item => (
-            <AuctionCard 
-              key={item.id} 
-              item={item} 
-              currentUser={{ id: userId }} 
-              onBid={handleBid}
-              isFlashing={flashId === item.id}
-            />
-          ))}
-        </div>
+      <div className="auction-grid">
+  {Array.isArray(items) ? (
+    items.map(item => (
+      <AuctionCard 
+        key={item.id} 
+        item={item} 
+        currentUser={{ id: userId }} 
+        onBid={handleBid}
+        isFlashing={flashId === item.id}
+      />
+    ))
+  ) : (
+    <p>Loading items or invalid data format...</p>
+  )}
+</div>
       </div>
     </div>
   );
