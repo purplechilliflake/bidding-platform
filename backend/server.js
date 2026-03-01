@@ -78,7 +78,7 @@ app.get('/items', async (req, res) => {
         const items = [];
     
         for (const key of keys) {
-            if (key.endsWith(':price')) continue;
+            if (key.endsWith(':price') || key.includes(':bids')) continue;
 
             const itemData = await redisClient.hGetAll(key);
             const endTimeMs = parseInt(itemData.auctionEndTime);
@@ -106,11 +106,14 @@ io.on('connection', (socket) => {
     // When a user sends a bid
     socket.on('BID_PLACED', async (data) => {
         const { itemId, bidAmount, userId } = data;
-        const itemKey = `item:${itemId}`; 
+    
+        const itemKey = `item:${itemId}`;
+        const walletKey = `wallet:${userId}`;
+        const bidsKey = `item:${itemId}:bids`;
+    
         try {
             await redisClient.watch(itemKey);
     
-            // Get the current bid from the Hash
             const currentBidStr = await redisClient.hGet(itemKey, 'currentBid');
             const currentPrice = parseInt(currentBidStr) || 0;
     
@@ -119,21 +122,64 @@ io.on('connection', (socket) => {
                 return socket.emit('error', { message: 'Bid too low!' });
             }
     
-            // Update the Hash fields atomically
-            const results = await redisClient
-                .multi()
-                .hSet(itemKey, 'currentBid', bidAmount.toString())
-                .hSet(itemKey, 'lastBidder', userId)
-                .exec();
+            // Get previous bid by THIS user
+            const previousUserBidStr = await redisClient.hGet(bidsKey, userId);
+            const previousUserBid = parseInt(previousUserBidStr) || 0;
+    
+            const difference = bidAmount - previousUserBid;
+    
+            // Get wallet
+            let walletBalance = await redisClient.get(walletKey);
+            if (!walletBalance) {
+                walletBalance = 150000;
+                await redisClient.set(walletKey, walletBalance);
+            }
+    
+            walletBalance = parseInt(walletBalance);
+    
+            if (walletBalance < difference) {
+                await redisClient.unwatch();
+                return socket.emit('error', { message: 'Insufficient balance!' });
+            }
+    
+            // Get previous highest bidder
+            const previousHighestBidder = await redisClient.hGet(itemKey, 'lastBidder');
+    
+            const multi = redisClient.multi();
+    
+            // Update item price + highest bidder
+            multi.hSet(itemKey, 'currentBid', bidAmount.toString());
+            multi.hSet(itemKey, 'lastBidder', userId);
+    
+            // Store user’s total bid
+            multi.hSet(bidsKey, userId, bidAmount.toString());
+    
+            // Deduct ONLY difference
+            multi.decrBy(walletKey, difference);
+    
+            // Refund previous highest bidder
+            if (previousHighestBidder && previousHighestBidder !== userId && previousHighestBidder !== 'System') {
+                const prevBidStr = await redisClient.hGet(bidsKey, previousHighestBidder);
+                const prevBid = parseInt(prevBidStr) || 0;
+    
+                multi.incrBy(`wallet:${previousHighestBidder}`, prevBid);
+                multi.hDel(bidsKey, previousHighestBidder);
+            }
+    
+            const results = await multi.exec();
     
             if (results === null) {
                 return socket.emit('error', { message: 'Outbid! Try again.' });
             }
     
+            const newBalance = walletBalance - difference;
+    
             io.emit('UPDATE_BID', { itemId, newBid: bidAmount, bidderId: userId });
-        } catch (error) {
-            console.error("Bidding Error:", error);
-            socket.emit('error', { message: 'Internal Server Error' });
+            io.emit('UPDATE_WALLET', { userId, newBalance });
+    
+        } catch (err) {
+            console.error("Bidding Error:", err);
+            socket.emit('error', { message: 'Internal error' });
         }
     });
     socket.on('disconnect', () => {

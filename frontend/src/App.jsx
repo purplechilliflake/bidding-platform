@@ -4,13 +4,15 @@ import { io } from 'socket.io-client';
 import './App.css';
 
 // const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
-const BACKEND_URL = "https://bidding-platform-eqba.onrender.com/";
+// const BACKEND_URL = "https://bidding-platform-eqba.onrender.com/";
+const BACKEND_URL = "http://localhost:5050/";
 const socket = io(BACKEND_URL);
 
 function App() {
   const [items, setItems] = useState([]);
   const [userId] = useState("User_" + Math.floor(Math.random() * 1000));
   const [flashId, setFlashId] = useState(null);
+  const [balance, setBalance] = useState(150000);
 
   useEffect(() => {
     axios.get(`${BACKEND_URL}items`)
@@ -28,12 +30,17 @@ function App() {
         }
         return item;
       }));
+
+      socket.on("UPDATE_WALLET", (data) => {
+        if (data.userId === userId) {
+          setBalance(data.newBalance);
+        }
+      });
     });
 
     return () => socket.off();
   }, []);
 
-  // Modified to take the total new bid amount
   const handleBid = (id, newTotalBid) => {
     socket.emit("BID_PLACED", { itemId: id, bidAmount: newTotalBid, userId });
   };
@@ -55,7 +62,7 @@ function App() {
         <div className="header-right">
           <div className="balance-card">
             <span className="label">Balance Available</span>
-            <span className="amount">$150,000</span>
+            <span className="amount">${balance.toLocaleString()}</span>
           </div>
 
           <div className="profile-section">
@@ -151,19 +158,17 @@ const AuctionCard = ({ item, currentUser, onBid, isFlashing }) => {
   <div className={`card-body ${isFlashing ? 'flash-effect' : ''}`}>
     <div className="card-header">
       <h3 className="item-title">{item.title}</h3>
-      {/* Timer removed from here */}
     </div>
     
     <p className="item-desc">{item.description || "Premium collector's item."}</p>
 
-    {/* NEW: Container for Price and Timer */}
+    {/* Container for Price and Timer */}
     <div className="bid-and-timer-row">
         <div className="current-bid-section">
             <p className="bid-label">Current Bid</p>
             <p className="bid-price">${item.currentBid.toLocaleString()}</p>
         </div>
 
-        {/* Timer moved here */}
         <div className={`timer-container-new ${timeLeft < 60000 ? 'timer-urgent' : 'timer-normal'}`}>
             <span style={{ fontSize: '0.9rem' }}>⏱</span>
             <span>{formatTime(timeLeft)}</span>

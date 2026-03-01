@@ -3514,3 +3514,5 @@ backend/node_modules/ws/lib/subprotocol.js
 backend/node_modules/ws/lib/validation.js
 backend/node_modules/ws/lib/websocket-server.js
 backend/node_modules/ws/lib/websocket.js
+*/.DS_Store
+.DS_Store
