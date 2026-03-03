@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { io } from 'socket.io-client';
 import './App.css';
+import Login from "./Login";
 
 // const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 // const BACKEND_URL = "https://bidding-platform-eqba.onrender.com/";
@@ -10,9 +11,22 @@ const socket = io(BACKEND_URL);
 
 function App() {
   const [items, setItems] = useState([]);
-  const [userId] = useState("User_" + Math.floor(Math.random() * 1000));
+  const [user, setUser] = useState(
+    JSON.parse(localStorage.getItem("user"))
+  );
+  const email = user?.email;
   const [flashId, setFlashId] = useState(null);
-  const [balance, setBalance] = useState(150000);
+  // const [balance, setBalance] = useState(150000);
+  const [balance, setBalance] = useState(user?.wallet || 0);
+
+  if (!user) {
+    return <Login setUser={setUser} />;
+  }
+
+  const handleLogout = () => {
+    localStorage.removeItem("user");
+    window.location.reload(); // This forces the app to show the Login screen
+  };
 
   useEffect(() => {
     axios.get(`${BACKEND_URL}items`)
@@ -32,7 +46,7 @@ function App() {
       }));
 
       socket.on("UPDATE_WALLET", (data) => {
-        if (data.userId === userId) {
+        if (data.user.email === user.email) {
           setBalance(data.newBalance);
         }
       });
@@ -42,7 +56,7 @@ function App() {
   }, []);
 
   const handleBid = (id, newTotalBid) => {
-    socket.emit("BID_PLACED", { itemId: id, bidAmount: newTotalBid, userId });
+    socket.emit("BID_PLACED", { itemId: id, bidAmount: newTotalBid, user: {email} });
   };
 
   return (
@@ -67,8 +81,9 @@ function App() {
 
           <div className="profile-section">
             <div className="user-meta">
-              <span className="pro-tag">{userId}</span>
+              <span className="pro-tag">{user.email}</span>
               <span className="account-type">Pro Account</span>
+              <button onClick={handleLogout} className="logout-btn">Logout</button>
             </div>
             <div className="avatar-circle">
               <i className="fa-solid fa-user"></i>
@@ -84,7 +99,7 @@ function App() {
       <AuctionCard 
         key={item.id} 
         item={item} 
-        currentUser={{ id: userId }} 
+        currentUser={{ id: user.email }} 
         onBid={handleBid}
         isFlashing={flashId === item.id}
       />

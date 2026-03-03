@@ -34,7 +34,7 @@ app.use(cors({ origin: "*" }));
 // 1. Seed with clear time logic
 async function seedItems() {
     // Wipe everything first so we don't have duplicate IDs
-    await redisClient.flushAll(); 
+    // await redisClient.flushAll(); 
     
     // Time Constants
     const MINS_45 = 45 * 60 * 1000;
@@ -99,19 +99,68 @@ app.get('/items', async (req, res) => {
     }
 });
 
+app.post('/register', async (req, res) => {
+    const {name, email, password, role} = req.body;
+
+    const userKey = `user:${email}`;
+
+    const exists = await redisClient.exists(userKey);
+    if (exists) {
+        return res.status(400).json({error: "User already exists"});
+    }
+
+    await redisClient.hSet(userKey, {
+        name,
+        email,
+        password, 
+        role,
+        wallet: "150000"
+    });
+
+    res.json({message: "Registration successful"});
+});
+
+app.post('/login', async (req, res) => {
+    const { email, password } = req.body;
+
+    const userKey = `user:${email}`;
+    const user = await redisClient.hGetAll(userKey);
+
+    if (!user.email) {
+        return res.status(400).json({ message: "User not found" });
+    }
+
+    if (user.password !== password) {
+        return res.status(400).json({ message: "Invalid password" });
+    }
+
+    res.json({
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        wallet: parseInt(user.wallet)
+    });
+});
+
 // 4. Real-time Logic
 io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
 
     // When a user sends a bid
     socket.on('BID_PLACED', async (data) => {
-        const { itemId, bidAmount, userId } = data;
-    
-        const itemKey = `item:${itemId}`;
-        const walletKey = `wallet:${userId}`;
-        const bidsKey = `item:${itemId}:bids`;
-    
         try {
+            const { itemId, bidAmount, user } = data;
+
+            if (!user || !user.email) {
+                return socket.emit("error", { message: "Invalid user data" });
+            }
+
+            const email = user.email;
+    
+            const itemKey = `item:${itemId}`;
+            const userKey = `user:${email}`;
+            const bidsKey = `item:${itemId}:bids`;
+    
             await redisClient.watch(itemKey);
     
             const currentBidStr = await redisClient.hGet(itemKey, 'currentBid');
@@ -122,48 +171,51 @@ io.on('connection', (socket) => {
                 return socket.emit('error', { message: 'Bid too low!' });
             }
     
-            // Get previous bid by THIS user
-            const previousUserBidStr = await redisClient.hGet(bidsKey, userId);
+            // Previous bid by this user
+            const previousUserBidStr = await redisClient.hGet(bidsKey, email);
             const previousUserBid = parseInt(previousUserBidStr) || 0;
     
             const difference = bidAmount - previousUserBid;
     
-            // Get wallet
-            let walletBalance = await redisClient.get(walletKey);
-            if (!walletBalance) {
-                walletBalance = 150000;
-                await redisClient.set(walletKey, walletBalance);
+            // Get wallet from HASH (correct way)
+            const walletStr = await redisClient.hGet(userKey, "wallet");
+            if (walletStr === null) {
+                return socket.emit('error', { message: 'User session expired. Please log in again.' });
             }
-    
-            walletBalance = parseInt(walletBalance);
+            
+            const walletBalance = parseInt(walletStr) || 0;
     
             if (walletBalance < difference) {
                 await redisClient.unwatch();
                 return socket.emit('error', { message: 'Insufficient balance!' });
             }
     
-            // Get previous highest bidder
             const previousHighestBidder = await redisClient.hGet(itemKey, 'lastBidder');
     
             const multi = redisClient.multi();
     
-            // Update item price + highest bidder
-            multi.hSet(itemKey, 'currentBid', bidAmount.toString());
-            multi.hSet(itemKey, 'lastBidder', userId);
+            // Update current bid + highest bidder
+            multi.hSet(itemKey, {
+                currentBid: bidAmount.toString(),
+                lastBidder: email
+            });
     
-            // Store user’s total bid
-            multi.hSet(bidsKey, userId, bidAmount.toString());
+            // Store user's total bid
+            multi.hSet(bidsKey, email, bidAmount.toString());
     
-            // Deduct ONLY difference
-            multi.decrBy(walletKey, difference);
+            // Deduct only difference
+            multi.hIncrBy(userKey, "wallet", -difference);
     
             // Refund previous highest bidder
-            if (previousHighestBidder && previousHighestBidder !== userId && previousHighestBidder !== 'System') {
+            if (
+                previousHighestBidder &&
+                previousHighestBidder !== email &&
+                previousHighestBidder !== 'System'
+            ) {
                 const prevBidStr = await redisClient.hGet(bidsKey, previousHighestBidder);
                 const prevBid = parseInt(prevBidStr) || 0;
-    
-                multi.incrBy(`wallet:${previousHighestBidder}`, prevBid);
-                multi.hDel(bidsKey, previousHighestBidder);
+            
+                multi.hIncrBy(`user:${previousHighestBidder}`, "wallet", prevBid);
             }
     
             const results = await multi.exec();
@@ -174,8 +226,16 @@ io.on('connection', (socket) => {
     
             const newBalance = walletBalance - difference;
     
-            io.emit('UPDATE_BID', { itemId, newBid: bidAmount, bidderId: userId });
-            io.emit('UPDATE_WALLET', { userId, newBalance });
+            io.emit('UPDATE_BID', {
+                itemId,
+                newBid: bidAmount,
+                bidderId: email
+            });
+    
+            io.emit('UPDATE_WALLET', {
+                user: { email },
+                newBalance
+            });
     
         } catch (err) {
             console.error("Bidding Error:", err);
