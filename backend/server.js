@@ -34,6 +34,7 @@ app.use(cors({ origin: "*" }));
 // 1. Seed with clear time logic
 async function seedItems() {
     // Wipe everything first so we don't have duplicate IDs
+    await redisClient.flushAll(); 
     
     // Time Constants
     const MINS_45 = 45 * 60 * 1000;
@@ -52,19 +53,22 @@ async function seedItems() {
     for (const item of items) {
         const itemKey = `item:${item.id}`;
         const priceKey = `item:${item.id}:price`;
-        const endTimeValue = Date.now() + item.duration;
+        const exists = await redisClient.exists(itemKey);
 
-        // Store metadata in a Hash
-        await redisClient.hSet(itemKey, {
-            title: item.title,
-            currentBid: item.currentBid.toString(),
-            auctionEndTime: endTimeValue.toString(),
-            lastBidder: 'System',
-            description: item.desc 
-        });
+        if (!exists) {
+            const endTimeValue = Date.now() + item.duration;
 
+            // Store metadata in a Hash
+            await redisClient.hSet(itemKey, {
+                title: item.title,
+                currentBid: item.currentBid.toString(),
+                auctionEndTime: endTimeValue.toString(),
+                lastBidder: 'System',
+                description: item.desc 
+            });
         // Store the price in a String for atomic bidding
-        await redisClient.set(priceKey, item.currentBid.toString());
+            await redisClient.set(priceKey, item.currentBid.toString());
+        } 
     }
     console.log("✅ Redis seeded");
 }
@@ -89,7 +93,8 @@ app.get('/items', async (req, res) => {
                 title: itemData.title,
                 currentBid: parseInt(itemData.currentBid),
                 auctionEndTime: endTimeMs,
-                description: itemData.description 
+                description: itemData.description,
+                lastBidder: itemData.lastBidder 
             });
         }
         res.json(items);

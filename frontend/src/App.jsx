@@ -14,18 +14,35 @@ function App() {
   const [user, setUser] = useState(
     JSON.parse(localStorage.getItem("user"))
   );
-  const email = user?.email;
+  // const email = user?.email;
   const [flashId, setFlashId] = useState(null);
   // const [balance, setBalance] = useState(150000);
-  const [balance, setBalance] = useState(user?.wallet || 0);
+  const [balance, setBalance] = useState(0);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef(null);
 
-  if (!user) {
-    return <Login setUser={setUser} />;
-  }
+  useEffect(() => {
+    if (user) {
+      setBalance(user.wallet || 0);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowDropdown(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem("user");
-    window.location.reload(); // This forces the app to show the Login screen
+    setUser(null);
+    setBalance(0);
+    setShowDropdown(false);
   };
 
   useEffect(() => {
@@ -35,32 +52,48 @@ function App() {
   })
       .catch(err => console.error("Error:", err));
 
-    socket.on("UPDATE_BID", (data) => {
-      setItems(prev => prev.map(item => {
-        if (item.id === data.itemId) {
-          setFlashId(data.itemId);
-          setTimeout(() => setFlashId(null), 800);
-          return { ...item, currentBid: data.newBid, lastBidder: data.bidderId };
-        }
-        return item;
-      }));
-
+      socket.on("UPDATE_BID", (data) => {
+        setItems(prev => prev.map(item => {
+          if (item.id === data.itemId) {
+            setFlashId(data.itemId);
+            setTimeout(() => setFlashId(null), 800);
+            return { ...item, currentBid: data.newBid, lastBidder: data.bidderId };
+          }
+          return item;
+        }));
+      });
+  
       socket.on("UPDATE_WALLET", (data) => {
-        if (data.user.email === user.email) {
+        if (user && data.user.email === user.email) {
           setBalance(data.newBalance);
         }
       });
-    });
-
-    return () => socket.off();
-  }, []);
+  
+      return () => {
+        socket.off("UPDATE_BID");
+        socket.off("UPDATE_WALLET");
+      };
+    }, [user]);
 
   const handleBid = (id, newTotalBid) => {
-    socket.emit("BID_PLACED", { itemId: id, bidAmount: newTotalBid, user: {email} });
+    if (!user) {
+      setShowLoginModal(true);
+      return;
+    }
+    socket.emit("BID_PLACED", { itemId: id, bidAmount: newTotalBid, user: { email: user.email } });
   };
 
   return (
     <div className="app-container">
+      {showLoginModal && (
+        <Login 
+          setUser={(userData) => {
+            setUser(userData);
+            setShowLoginModal(false);
+          }} 
+          onClose={() => setShowLoginModal(false)} 
+        />
+      )}
       <header className="main-header">
         <div className="header-left">
           <div className="logo-wrapper">
@@ -74,40 +107,56 @@ function App() {
         </div>
 
         <div className="header-right">
-          <div className="balance-card">
-            <span className="label">Balance Available</span>
-            <span className="amount">${balance.toLocaleString()}</span>
-          </div>
-
-          <div className="profile-section">
-            <div className="user-meta">
-              <span className="pro-tag">{user.email}</span>
-              <span className="account-type">Pro Account</span>
-              <button onClick={handleLogout} className="logout-btn">Logout</button>
-            </div>
-            <div className="avatar-circle">
-              <i className="fa-solid fa-user"></i>
+          {user ? (
+            <>
+              <div className="balance-card">
+                <span className="label">Balance Available</span>
+                <span className="amount">${balance.toLocaleString()}</span>
               </div>
-          </div>
+              <div className="profile-section" ref={dropdownRef}>
+                <div className="user-meta">
+                  <span className="pro-tag">{user.name || user.email}</span>
+                  <span className="account-type">Pro Account</span>
+                </div>
+
+                <div className="avatar-circle" onClick={() => setShowDropdown(!showDropdown)}>
+                  {user.name ? user.name.charAt(0).toUpperCase() : <i className="fa-solid fa-user"></i>}
+                </div>
+
+                {showDropdown && (
+                  <div className="dropdown-menu">
+                    <div className="dropdown-header">
+                       <strong>{user.name}</strong>
+                       <span>{user.email}</span>
+                    </div>
+                    <hr />
+                    <button onClick={handleLogout} className="dropdown-item logout-red">
+                       <i className="fa-solid fa-right-from-bracket"></i> Logout
+                    </button>
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            <button className="login-trigger-btn" onClick={() => setShowLoginModal(true)}>
+              Login
+            </button>
+          )}
         </div>
       </header>
 
       <div className="dashboard">
-      <div className="auction-grid">
-  {Array.isArray(items) ? (
-    items.map(item => (
-      <AuctionCard 
-        key={item.id} 
-        item={item} 
-        currentUser={{ id: user.email }} 
-        onBid={handleBid}
-        isFlashing={flashId === item.id}
-      />
-    ))
-  ) : (
-    <p>Loading items or invalid data format...</p>
-  )}
-</div>
+        <div className="auction-grid">
+          {items.map(item => (
+            <AuctionCard 
+              key={item.id} 
+              item={item} 
+              currentUser={{ id: user?.email }} 
+              onBid={handleBid}
+              isFlashing={flashId === item.id}
+            />
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -125,8 +174,8 @@ const AuctionCard = ({ item, currentUser, onBid, isFlashing }) => {
   }, [item.auctionEndTime]);
 
   const isAuctionOver = timeLeft <= 0;
-  const isHighestBidder = item.lastBidder === currentUser.id;
-  const isOutbid = !isHighestBidder && item.lastBidder !== 'System' && !isAuctionOver;
+  const isHighestBidder = currentUser?.id && item.lastBidder === currentUser.id;
+  const isOutbid = currentUser.id && !isHighestBidder && item.lastBidder !== 'System' && !isAuctionOver;
 
   const formatTime = (ms) => {
     if (ms <= 0) return "0:00";
