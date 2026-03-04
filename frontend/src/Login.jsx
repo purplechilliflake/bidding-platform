@@ -1,7 +1,8 @@
 import { useState } from "react";
 import axios from "axios";
 
-const BACKEND_URL = "http://localhost:5050/";
+// const BACKEND_URL = "http://localhost:5050/";
+const BACKEND_URL = "https://bidding-platform-eqba.onrender.com/";
 
 function Login({ setUser, onClose }) {
   const [isRegister, setIsRegister] = useState(false);
