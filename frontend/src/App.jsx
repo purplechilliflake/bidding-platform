@@ -87,7 +87,7 @@ function App() {
             </div>
             <div className="avatar-circle">
               <i className="fa-solid fa-user"></i>
-            </div>
+              </div>
           </div>
         </div>
       </header>

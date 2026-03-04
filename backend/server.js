@@ -34,7 +34,6 @@ app.use(cors({ origin: "*" }));
 // 1. Seed with clear time logic
 async function seedItems() {
     // Wipe everything first so we don't have duplicate IDs
-    // await redisClient.flushAll(); 
     
     // Time Constants
     const MINS_45 = 45 * 60 * 1000;
