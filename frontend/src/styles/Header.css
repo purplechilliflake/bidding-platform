@@ -1,0 +1,240 @@
+/* 1. HEADER LAYOUT */
+.main-header {
+    background: white;
+    border-bottom: 1px solid var(--border);
+    padding: 1rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+  }
+  
+ /* 2. LOGO & BRANDING */
+  .logo-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  
+  .logo-wrapper i {
+    font-size: 1.5rem;
+    color: var(--accent);
+    background: #eef2ff;
+    padding: 0.5rem;
+    border-radius: 0.5rem;
+  }
+  
+  .header-left h1 {
+    font-size: 1.25rem;
+    font-weight: 800;
+    margin: 0;
+    color: var(--text-main);
+  }
+  
+  .header-left h1 span {
+    color: var(--accent);
+  }
+  
+  .tagline {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    margin-top: 0.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    background-color: var(--success);
+    border-radius: 50%;
+  }
+  
+/* 3. BALANCE CARD */
+  .balance-card .label {
+    display: block;
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+  }
+  
+  .balance-card .amount {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: var(--text-main);
+  }
+  
+/* 4. PROFILE SECTION */
+  .profile-section {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    position: relative;
+  }
+  
+  .user-meta {
+    text-align: right;
+  }
+  
+  .pro-tag {
+    font-size: 0.8rem;
+    font-weight: 700;
+    display: block;
+    color: var(--text-main);
+  }
+  
+  .account-type {
+    font-size: 0.7rem;
+    color: var(--accent);
+    font-weight: 600;
+    text-transform: capitalize;
+  }
+  
+  /* Avatar */
+  
+  .avatar-circle {
+    width: 42px;
+    height: 42px;
+    background: var(--accent);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    cursor: pointer;
+    transition: 0.2s;
+    border: 2px solid white;
+    box-shadow: 0 0 0 1px var(--border);
+  }
+  
+  .avatar-circle:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 2px var(--accent);
+  }
+  
+/* 5. DROPDOWN MENU */
+  .dropdown-menu {
+    position: absolute;
+    top: calc(100% + 12px);
+    right: 0;
+    width: 260px;
+    background: white;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    z-index: 1000;
+    animation: slideDown 0.2s ease-out;
+  }
+  
+  /* Dropdown Header */
+  
+  .dropdown-header {
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  
+  .clickable-header {
+    cursor: pointer;
+    border-radius: 8px;
+    transition: 0.2s;
+  }
+  
+  .clickable-header:hover {
+    background: var(--bg-dark);
+  }
+  
+  .name-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  
+  .name-row strong {
+    font-size: 1rem;
+    color: var(--text-main);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  .user-email-text {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    display: block;
+  }
+  
+  /* Role Tag */
+  
+  .role-tag {
+    background: #e0e7ff;
+    color: var(--accent);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+  
+/* 6. DROPDOWN ACTIONS */
+  .dropdown-actions {
+    padding: 0 0.5rem 0.5rem 0.5rem;
+  }
+  
+  .view-dashboard-btn {
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: none;
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 0.85rem;
+    padding: 0.5rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: 0.2s;
+  }
+  
+  .view-dashboard-btn:hover {
+    background: #f5f7ff;
+    text-decoration: underline;
+  }
+  
+/* 7. DROPDOWN ITEMS */
+  .dropdown-item {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    text-align: left;
+    border: none;
+    background: none;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: var(--text-main);
+  }
+  
+  .dropdown-item:hover {
+    background: var(--bg-dark);
+  }
+  
+  .logout-red {
+    color: var(--danger);
+  }

@@ -1,0 +1,44 @@
+/* .seller-container { max-width: 1100px; margin: 0 auto; animation: fadeIn 0.3s; }
+.seller-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+.seller-layout { display: grid; grid-template-columns: 400px 1fr; gap: 2rem; }
+
+.seller-form-card { background: white; padding: 2rem; border-radius: 1rem; border: 1px solid var(--border); }
+.my-items-list { background: white; padding: 2rem; border-radius: 1rem; border: 1px solid var(--border); }
+
+.seller-item-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 1rem; border-bottom: 1px solid var(--border);
+}
+.item-info strong { display: block; font-size: 1rem; }
+.item-info span { color: var(--accent); font-weight: 700; }
+.bidder-email { font-size: 0.8rem; color: var(--text-muted); background: var(--bg-dark); padding: 0.2rem 0.5rem; border-radius: 4px; } */
+
+
+
+/* Seller Page Layout */
+.seller-container { max-width: 1100px; margin: 0 auto; animation: fadeIn 0.3s; padding-bottom: 3rem; }
+.seller-header { display: flex; justify-content: space-between; align-items: center; margin: 2rem 0; }
+.seller-layout { display: grid; grid-template-columns: 400px 1fr; gap: 2rem; }
+
+.seller-form-card { background: white; padding: 2rem; border-radius: 1rem; border: 1px solid var(--border); }
+.my-items-list { background: white; padding: 2rem; border-radius: 1rem; border: 1px solid var(--border); }
+
+textarea {
+  width: 100%; padding: 0.75rem; border: 1px solid var(--border);
+  border-radius: 0.5rem; min-height: 80px; font-family: inherit; margin-bottom: 1rem;
+}
+
+/* Duration Inputs */
+.duration-inputs { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.5rem; margin-bottom: 1rem; }
+.duration-inputs input { width: 100%; text-align: center; padding: 0.5rem; border: 1px solid var(--border); border-radius: 0.5rem; }
+.duration-inputs small { display: block; text-align: center; color: var(--text-muted); font-size: 0.7rem; }
+
+.seller-item-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 1rem; border-bottom: 1px solid var(--border);
+}
+.item-info strong { display: block; font-size: 1rem; }
+.item-info span { color: var(--accent); font-weight: 700; }
+.bidder-email { font-size: 0.8rem; color: var(--text-muted); background: var(--bg-dark); padding: 0.2rem 0.5rem; border-radius: 4px; }
+
+.btn-secondary { background: white; border: 1px solid var(--border); padding: 0.5rem 1rem; border-radius: 0.5rem; cursor: pointer; font-weight: 600; }

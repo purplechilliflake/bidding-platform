@@ -1,321 +1,39 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
-const redis = require('redis');
 const cors = require('cors');
 require('dotenv').config();
 
+const { connectRedis } = require('./config/redis');
+const seedItems = require('./utils/seed');
+const authRoutes = require('./routes/auth');
+const itemRoutes = require('./routes/items');
+const bidHandler = require('./sockets/bidHandler');
+
 const app = express();
+const server = http.createServer(app);
+const io = new Server(server, { cors: { origin: "*" } });
+
 app.use(cors());
 app.use(express.json());
 
-const server = http.createServer(app);
+// Routes
+app.use('/', authRoutes);
+app.use('/items', itemRoutes(io));
 
-// 1. Initialize Redis Client
-const redisClient = redis.createClient({
-    url: process.env.REDIS_URL || 'redis://127.0.0.1:6379'
-});
-console.log(process.env.REDIS_URL);
-
-redisClient.on('error', (err) => console.log('Redis Client Error', err));
-
-// 2. Initialize Socket.io
-const io = new Server(server, {
-    cors: {
-        // origin: process.env.FRONTEND_URL,
-        origin: "*",
-        methods: ["GET", "POST"]
-    }
-});
-
-app.use(cors({ origin: "*" }));
-
-// seeding bidding items to the shelves
-// 1. Seed with clear time logic
-async function seedItems() {
-    // Wipe everything first so we don't have duplicate IDs
-    // await redisClient.flushAll(); 
-    
-    // Time Constants
-    const MINS_45 = 45 * 60 * 1000;
-    const ONE_HOUR = 60 * 60 * 1000;
-    const TWO_HOURS = 2 * ONE_HOUR;
-    const ONE_WEEK = ONE_HOUR * 24 * 7;
-
-    const items = [
-        { id: '1', title: "Vintage Rolex Submariner", currentBid: 1000, duration: ONE_HOUR, desc: "Pristine 1970s model with original box." },
-        { id: '2', title: "Holographic Charizard 1st Ed", currentBid: 500, duration: TWO_HOURS, desc: "Gem Mint 10. Rare collector item from 1999." },
-        { id: '3', title: "Vintage 1970s Leica M4", currentBid: 1450, duration: TWO_HOURS + ONE_WEEK, desc: "A masterpiece of mechanical engineering." },
-        { id: '4', title: "SpaceX Starship Fragment", currentBid: 680, duration: MINS_45, desc: "Authenticated piece of heat shield from SN15." },
-        { id: '5', title: "Bored Ape Yacht Club #441", currentBid: 92000, duration: ONE_WEEK + ONE_WEEK, desc: "Exclusive digital collectible. Transferred instantly." }
-    ];
-
-    for (const item of items) {
-        const itemKey = `item:${item.id}`;
-        const priceKey = `item:${item.id}:price`;
-        const exists = await redisClient.exists(itemKey);
-
-        if (!exists) {
-            const endTimeValue = Date.now() + item.duration;
-
-            // Store metadata in a Hash
-            await redisClient.hSet(itemKey, {
-                title: item.title,
-                currentBid: item.currentBid.toString(),
-                auctionEndTime: endTimeValue.toString(),
-                lastBidder: 'System',
-                description: item.desc 
-            });
-        // Store the price in a String for atomic bidding
-            await redisClient.set(priceKey, item.currentBid.toString());
-        } 
-    }
-    console.log("✅ Redis seeded");
-}
-
-// 2. API Route with Human-Readable Time
-app.get('/items', async (req, res) => {
-    try {
-        const keys = await redisClient.keys('item:*');
-        console.log(keys);
-        const items = [];
-    
-        for (const key of keys) {
-            if (key.endsWith(':price') || key.includes(':bids')) continue;
-
-            const itemData = await redisClient.hGetAll(key);
-            const endTimeMs = parseInt(itemData.auctionEndTime);
-            console.log(itemData);
-            console.log(endTimeMs);
-
-            items.push({
-                id: key.split(':')[1],
-                title: itemData.title,
-                currentBid: parseInt(itemData.currentBid),
-                auctionEndTime: endTimeMs,
-                description: itemData.description,
-                lastBidder: itemData.lastBidder 
-            });
-        }
-        res.json(items);
-    } catch (err) {
-        res.status(500).json({error: "Failed to fetch items"});
-    }
-});
-
-app.post('/items', async (req, res) => {
-    try {
-        const { title, startPrice, days, hours, mins, description, sellerEmail } = req.body;
-
-        if (!title || !startPrice || !sellerEmail) {
-            return res.status(400).json({ error: "Missing required fields" });
-        }
-
-        // Generate a unique ID (Timestamp is simple for now)
-        const itemId = Date.now().toString();
-        const itemKey = `item:${itemId}`;
-        const priceKey = `item:${itemId}:price`;
-        
-        const d = parseInt(days) || 0;
-        const h = parseInt(hours) || 0;
-        const m = parseInt(mins) || 0;
-        const totalMins = (parseInt(days) * 1440) + (parseInt(hours) * 60) + parseInt(mins);
-        if (totalMins <= 0) {
-            return res.status(400).json({ error: "Duration must be at least 1 minute" });
-        }
-        const durationMs = totalMins * 60 * 1000;
-        const endTimeValue = Date.now() + durationMs;
-
-        const newItem = {
-            id: itemId,
-            title,
-            currentBid: startPrice.toString(),
-            auctionEndTime: endTimeValue.toString(),
-            lastBidder: 'System',
-            description: description || "No description provided",
-            seller: sellerEmail 
-        };
-
-        await redisClient.hSet(itemKey, newItem);
-        await redisClient.set(priceKey, startPrice.toString());
-
-        io.emit('NEW_ITEM_ADDED', {
-            ...newItem,
-            currentBid: parseInt(startPrice),
-            auctionEndTime: endTimeValue
-        });
-
-        res.json({ message: "Item listed successfully", itemId });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: "Failed to create item" });
-    }
-});
-
-app.post('/register', async (req, res) => {
-    const {name, email, password, role} = req.body;
-
-    const userKey = `user:${email}`;
-
-    const exists = await redisClient.exists(userKey);
-    if (exists) {
-        return res.status(400).json({error: "User already exists"});
-    }
-
-    await redisClient.hSet(userKey, {
-        name,
-        email,
-        password, 
-        role,
-        wallet: "150000"
-    });
-
-    res.json({message: "Registration successful"});
-});
-
-app.post('/login', async (req, res) => {
-    const { email, password } = req.body;
-
-    const userKey = `user:${email}`;
-    const user = await redisClient.hGetAll(userKey);
-
-    if (!user.email) {
-        return res.status(400).json({ message: "User not found" });
-    }
-
-    if (user.password !== password) {
-        return res.status(400).json({ message: "Invalid password" });
-    }
-
-    res.json({
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        wallet: parseInt(user.wallet)
-    });
-});
-
-// 4. Real-time Logic
+// Sockets
 io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
-
-    // When a user sends a bid
-    socket.on('BID_PLACED', async (data) => {
-        try {
-            const { itemId, bidAmount, user } = data;
-
-            if (!user || !user.email) {
-                return socket.emit("error", { message: "Invalid user data" });
-            }
-
-            const email = user.email;
-    
-            const itemKey = `item:${itemId}`;
-            const userKey = `user:${email}`;
-            const bidsKey = `item:${itemId}:bids`;
-    
-            await redisClient.watch(itemKey);
-
-            const itemData = await redisClient.hGetAll(itemKey);
-            if (itemData.seller === user.email) {
-                return socket.emit('error', { message: 'You cannot bid on your own item!' });
-            }    
-    
-            const currentBidStr = await redisClient.hGet(itemKey, 'currentBid');
-            const currentPrice = parseInt(currentBidStr) || 0;
-    
-            if (bidAmount <= currentPrice) {
-                await redisClient.unwatch();
-                return socket.emit('error', { message: 'Bid too low!' });
-            }
-    
-            // Previous bid by this user
-            const previousUserBidStr = await redisClient.hGet(bidsKey, email);
-            const previousUserBid = parseInt(previousUserBidStr) || 0;
-    
-            const difference = bidAmount - previousUserBid;
-    
-            // Get wallet from HASH (correct way)
-            const walletStr = await redisClient.hGet(userKey, "wallet");
-            if (walletStr === null) {
-                return socket.emit('error', { message: 'User session expired. Please log in again.' });
-            }
-            
-            const walletBalance = parseInt(walletStr) || 0;
-    
-            if (walletBalance < difference) {
-                await redisClient.unwatch();
-                return socket.emit('error', { message: 'Insufficient balance!' });
-            }
-    
-            const previousHighestBidder = await redisClient.hGet(itemKey, 'lastBidder');
-    
-            const multi = redisClient.multi();
-    
-            // Update current bid + highest bidder
-            multi.hSet(itemKey, {
-                currentBid: bidAmount.toString(),
-                lastBidder: email
-            });
-    
-            // Store user's total bid
-            multi.hSet(bidsKey, email, bidAmount.toString());
-    
-            // Deduct only difference
-            multi.hIncrBy(userKey, "wallet", -difference);
-    
-            // Refund previous highest bidder
-            if (
-                previousHighestBidder &&
-                previousHighestBidder !== email &&
-                previousHighestBidder !== 'System'
-            ) {
-                const prevBidStr = await redisClient.hGet(bidsKey, previousHighestBidder);
-                const prevBid = parseInt(prevBidStr) || 0;
-            
-                multi.hIncrBy(`user:${previousHighestBidder}`, "wallet", prevBid);
-            }
-    
-            const results = await multi.exec();
-    
-            if (results === null) {
-                return socket.emit('error', { message: 'Outbid! Try again.' });
-            }
-    
-            const newBalance = walletBalance - difference;
-    
-            io.emit('UPDATE_BID', {
-                itemId,
-                newBid: bidAmount,
-                bidderId: email
-            });
-    
-            io.emit('UPDATE_WALLET', {
-                user: { email },
-                newBalance
-            });
-    
-        } catch (err) {
-            console.error("Bidding Error:", err);
-            socket.emit('error', { message: 'Internal error' });
-        }
-    });
-    socket.on('disconnect', () => {
-        console.log('User disconnected');
-    });
+    bidHandler(io, socket);
+    socket.on('disconnect', () => console.log('User disconnected'));
 });
 
-// Start Server
 const PORT = process.env.PORT || 5050;
-async function start() {
-    await redisClient.connect();
-    console.log("Connected to Redis");
-    
-    await seedItems();
 
-    server.listen(PORT, () => {
-        console.log(`Server running on port ${PORT}`);
-    });
+async function start() {
+    await connectRedis();
+    await seedItems();
+    server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 }
 
 start();
