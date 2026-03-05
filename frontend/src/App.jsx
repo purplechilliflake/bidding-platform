@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { io } from 'socket.io-client';
-// src/App.jsx
 import './styles/Variables.css';
 import './styles/Header.css';
 import './styles/AuctionCard.css';
@@ -12,8 +11,8 @@ import AuctionCard from './components/AuctionCard';
 import SellerDashboard from './components/SellerDashboard';
 
 // const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
-// const BACKEND_URL = "https://bidding-platform-eqba.onrender.com/";
-const BACKEND_URL = "http://localhost:5050/";
+const BACKEND_URL = "https://bidding-platform-eqba.onrender.com/";
+// const BACKEND_URL = "http://localhost:5050/";
 const socket = io(BACKEND_URL);
 
 function App() {
