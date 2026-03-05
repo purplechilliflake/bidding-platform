@@ -460,3 +460,65 @@ hr {
   border-top: 1px solid var(--border);
   margin: 0.5rem 0;
 }
+
+.btn-add-item {
+  background: var(--success);
+  color: white;
+  border: none;
+  padding: 0.6rem 1.2rem;
+  border-radius: 0.5rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: 2rem;
+}
+
+textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  min-height: 80px;
+  font-family: inherit;
+}
+
+.account-type {
+  text-transform: capitalize; /* Shows "Bidder" or "Seller" nicely */
+}
+
+/* Duration Inputs */
+.duration-inputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 0.5rem;
+}
+.duration-inputs input { width: 100%; text-align: center; }
+.duration-inputs small { display: block; text-align: center; color: var(--text-muted); }
+
+/* Seller Page Layout */
+.seller-container { max-width: 1100px; margin: 0 auto; animation: fadeIn 0.3s; }
+.seller-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+.seller-layout { display: grid; grid-template-columns: 400px 1fr; gap: 2rem; }
+
+.seller-form-card { background: white; padding: 2rem; border-radius: 1rem; border: 1px solid var(--border); }
+.my-items-list { background: white; padding: 2rem; border-radius: 1rem; border: 1px solid var(--border); }
+
+.seller-item-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 1rem; border-bottom: 1px solid var(--border);
+}
+.item-info strong { display: block; font-size: 1rem; }
+.item-info span { color: var(--accent); font-weight: 700; }
+.bidder-email { font-size: 0.8rem; color: var(--text-muted); background: var(--bg-dark); padding: 0.2rem 0.5rem; border-radius: 4px; }
+
+/* Dropdown Clickable Header */
+.clickable-header {
+  cursor: pointer; padding: 1rem; border-radius: 8px; transition: 0.2s;
+}
+.clickable-header:hover { background: var(--bg-dark); }
+.view-link { color: var(--accent); font-weight: 700; font-size: 0.75rem; margin-top: 0.5rem; }
+.role-tag { background: #e0e7ff; color: var(--accent); padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; }
+
+.btn-secondary { background: white; border: 1px solid var(--border); padding: 0.5rem 1rem; border-radius: 0.5rem; cursor: pointer; }

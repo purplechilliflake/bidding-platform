@@ -1,8 +1,8 @@
 import { useState } from "react";
 import axios from "axios";
 
-// const BACKEND_URL = "http://localhost:5050/";
-const BACKEND_URL = "https://bidding-platform-eqba.onrender.com/";
+const BACKEND_URL = "http://localhost:5050/";
+// const BACKEND_URL = "https://bidding-platform-eqba.onrender.com/";
 
 function Login({ setUser, onClose }) {
   const [isRegister, setIsRegister] = useState(false);
@@ -74,14 +74,20 @@ function Login({ setUser, onClose }) {
 
         <form onSubmit={handleSubmit} className="auth-form">
         {isRegister && (
+          <>
             <div className="input-group">
               <label>Full Name</label>
-              <input 
-                type="text" placeholder="John Doe" required
-                onChange={e => setForm({ ...form, name: e.target.value })}
-              />
+              <input type="text" required onChange={e => setForm({ ...form, name: e.target.value })} />
             </div>
-          )}
+            <div className="input-group">
+              <label>I want to:</label>
+              <select className="custom-input" onChange={e => setForm({ ...form, role: e.target.value })}>
+                <option value="bidder">Buy / Bid on items</option>
+                <option value="seller">Sell / Post items</option>
+              </select>
+            </div>
+          </>
+        )}
           
           <div className="input-group">
             <label>Email Address</label>

@@ -34,7 +34,7 @@ app.use(cors({ origin: "*" }));
 // 1. Seed with clear time logic
 async function seedItems() {
     // Wipe everything first so we don't have duplicate IDs
-    await redisClient.flushAll(); 
+    // await redisClient.flushAll(); 
     
     // Time Constants
     const MINS_45 = 45 * 60 * 1000;
@@ -103,6 +103,55 @@ app.get('/items', async (req, res) => {
     }
 });
 
+app.post('/items', async (req, res) => {
+    try {
+        const { title, startPrice, days, hours, mins, description, sellerEmail } = req.body;
+
+        if (!title || !startPrice || !sellerEmail) {
+            return res.status(400).json({ error: "Missing required fields" });
+        }
+
+        // Generate a unique ID (Timestamp is simple for now)
+        const itemId = Date.now().toString();
+        const itemKey = `item:${itemId}`;
+        const priceKey = `item:${itemId}:price`;
+        
+        const d = parseInt(days) || 0;
+        const h = parseInt(hours) || 0;
+        const m = parseInt(mins) || 0;
+        const totalMins = (parseInt(days) * 1440) + (parseInt(hours) * 60) + parseInt(mins);
+        if (totalMins <= 0) {
+            return res.status(400).json({ error: "Duration must be at least 1 minute" });
+        }
+        const durationMs = totalMins * 60 * 1000;
+        const endTimeValue = Date.now() + durationMs;
+
+        const newItem = {
+            id: itemId,
+            title,
+            currentBid: startPrice.toString(),
+            auctionEndTime: endTimeValue.toString(),
+            lastBidder: 'System',
+            description: description || "No description provided",
+            seller: sellerEmail 
+        };
+
+        await redisClient.hSet(itemKey, newItem);
+        await redisClient.set(priceKey, startPrice.toString());
+
+        io.emit('NEW_ITEM_ADDED', {
+            ...newItem,
+            currentBid: parseInt(startPrice),
+            auctionEndTime: endTimeValue
+        });
+
+        res.json({ message: "Item listed successfully", itemId });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Failed to create item" });
+    }
+});
+
 app.post('/register', async (req, res) => {
     const {name, email, password, role} = req.body;
 
@@ -166,6 +215,11 @@ io.on('connection', (socket) => {
             const bidsKey = `item:${itemId}:bids`;
     
             await redisClient.watch(itemKey);
+
+            const itemData = await redisClient.hGetAll(itemKey);
+            if (itemData.seller === user.email) {
+                return socket.emit('error', { message: 'You cannot bid on your own item!' });
+            }    
     
             const currentBidStr = await redisClient.hGet(itemKey, 'currentBid');
             const currentPrice = parseInt(currentBidStr) || 0;
