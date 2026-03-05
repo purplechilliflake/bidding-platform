@@ -67,7 +67,6 @@ const AuctionCard = ({ item, currentUser, onBid, isFlashing }) => {
         {/* Container for Price and Timer */}
         <div className="bid-and-timer-row">
             <div className="current-bid-section">
-                <p className="bid-label">Current Bid</p>
                 <p className="bid-price">${item.currentBid.toLocaleString()}</p>
             </div>
   
