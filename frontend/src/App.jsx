@@ -10,9 +10,16 @@ import Login from "./Login";
 import AuctionCard from './components/AuctionCard';
 import SellerDashboard from './components/SellerDashboard';
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
-// const BACKEND_URL = "https://bidding-platform-eqba.onrender.com/items";
-// const BACKEND_URL = "http://localhost:5050/";
+// const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
+// // const BACKEND_URL = "https://bidding-platform-eqba.onrender.com/items";
+// // const BACKEND_URL = "http://localhost:5050/";
+
+const isProduction = true; 
+
+const BACKEND_URL = isProduction 
+  ? "https://bidding-platform-eqba.onrender.com/" 
+  : "http://localhost:5050/";
+  
 const socket = io(BACKEND_URL);
 
 function App() {
