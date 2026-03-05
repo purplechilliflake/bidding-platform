@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import axios from 'axios';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
+// const BACKEND_URL = "https://bidding-platform-eqba.onrender.com/items";
 // const BACKEND_URL = "http://localhost:5050/";
 
 const SellerDashboard = ({ user, items, onBack }) => {
