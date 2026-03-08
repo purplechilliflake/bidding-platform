@@ -8,16 +8,31 @@ module.exports = (io) => {
         try {
             const keys = await redisClient.keys('item:*');
             const items = [];
+    
             for (const key of keys) {
                 if (key.endsWith(':price') || key.includes(':bids') || key.includes(':history')) continue;
+    
                 const data = await redisClient.hGetAll(key);
-                const historyData = await redisClient.lRange(`item:${itemId}:history`, 0, -1);
-                const history = historyData.map(entry => JSON.parse(entry));
+                const itemId = key.split(':')[1];
+    
+                const historyKey = `item:${itemId}:history`;
+                const historyData = await redisClient.lRange(historyKey, 0, -1);
+    
+                const history = historyData
+                    .map(entry => {
+                        try {
+                            return typeof entry === "string" ? JSON.parse(entry) : entry;
+                        } catch {
+                            return null;
+                        }
+                    })
+                    .filter(Boolean);
+    
                 items.push({
-                    id: key.split(':')[1],
+                    id: itemId,
                     title: data.title,
-                    currentBid: parseInt(data.currentBid),
-                    auctionEndTime: parseInt(data.auctionEndTime),
+                    currentBid: parseInt(data.currentBid) || 0,
+                    auctionEndTime: parseInt(data.auctionEndTime) || 0,
                     description: data.description,
                     lastBidder: data.lastBidder,
                     lastBidderName: data.lastBidderName || "No bids yet",
@@ -25,8 +40,13 @@ module.exports = (io) => {
                     history: history
                 });
             }
+    
             res.json(items);
-        } catch (err) { res.status(500).json({ error: "Fetch error" }); }
+    
+        } catch (err) {
+            console.error("ITEM FETCH ERROR:", err);
+            res.status(500).json({ error: "Fetch error" });
+        }
     });
 
     // POST new item
