@@ -38,7 +38,7 @@ function App() {
     if (user) {
       setBalance(user.wallet || 0);
     }
-  }, [user]);
+  }, [user?.wallet]);
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -98,6 +98,9 @@ function App() {
       socket.on("UPDATE_WALLET", (data) => {
         if (user && data.user.email === user.email) {
           setBalance(data.newBalance);
+          const updatedUser = { ...user, wallet: data.newBalance };
+          localStorage.setItem("user", JSON.stringify(updatedUser));
+          setUser(updatedUser);
         }
       });
 
