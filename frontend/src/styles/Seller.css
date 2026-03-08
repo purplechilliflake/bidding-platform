@@ -42,3 +42,64 @@ textarea {
 .bidder-email { font-size: 0.8rem; color: var(--text-muted); background: var(--bg-dark); padding: 0.2rem 0.5rem; border-radius: 4px; }
 
 .btn-secondary { background: white; border: 1px solid var(--border); padding: 0.5rem 1rem; border-radius: 0.5rem; cursor: pointer; font-weight: 600; }
+
+/* Card Container for each item */
+.seller-item-card {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.25rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+  }
+  
+  .current-bid-text {
+    color: var(--accent);
+    font-weight: 800;
+    font-size: 1.1rem;
+    display: block;
+  }
+  
+  .leader-badge {
+    background: #eef2ff;
+    color: var(--accent);
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    border: 1px solid #e0e7ff;
+  }
+  
+  /* History Box */
+  .seller-history-box {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px dashed var(--border);
+  }
+  
+  .seller-history-box h5 {
+    margin: 0 0 8px 0;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    letter-spacing: 0.05em;
+  }
+  
+  .mini-history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  
+  .mini-history-item {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    background: #f8fafc;
+    padding: 6px 10px;
+    border-radius: 6px;
+  }
+  
+  .bidder-name { font-weight: 600; color: var(--text-main); }
+  .bid-amt { font-weight: 700; color: var(--success); }
+  .no-bids-small { font-size: 0.8rem; color: var(--text-muted); font-style: italic; }

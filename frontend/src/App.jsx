@@ -19,7 +19,7 @@ const isProduction = true;
 const BACKEND_URL = isProduction 
   ? "https://bidding-platform-eqba.onrender.com/" 
   : "http://localhost:5050/";
-  
+
 const socket = io(BACKEND_URL);
 
 function App() {
@@ -70,7 +70,26 @@ function App() {
           if (item.id === data.itemId) {
             setFlashId(data.itemId);
             setTimeout(() => setFlashId(null), 800);
-            return { ...item, currentBid: Number(data.newBid), lastBidder: data.bidderId };
+
+            const safeName = data.bidderName || data.newHistoryEntry?.bidderName || "Anonymous";
+            const safeAmount = data.newBid || data.newHistoryEntry?.bidAmount || item.currentBid;
+
+            const newEntry = {
+              bidderName: safeName,
+              bidAmount: Number(safeAmount),
+              time: Date.now()
+            };
+
+            const cleanHistory = (Array.isArray(item.history) ? item.history : [])
+              .filter(b => b !== null && typeof b === 'object');
+
+            return { 
+              ...item, 
+              currentBid: Number(safeAmount), 
+              lastBidder: data.bidderId,
+              lastBidderName: safeName, 
+              history: [newEntry, ...cleanHistory].slice(0, 10)
+            };
           }
           return item;
         }));
@@ -90,6 +109,10 @@ function App() {
         };  
         setItems(prev => [formattedItem, ...prev]); 
       });
+
+      socket.on("error", (data) => {
+        alert(data.message); 
+      });
   
       return () => {
         socket.off("UPDATE_BID");
@@ -104,8 +127,12 @@ function App() {
       setShowLoginModal(true);
       return;
     }
-    socket.emit("BID_PLACED", { itemId: id, bidAmount: newTotalBid, user: { email: user.email } });
-  };
+    console.log("Placing bid as:", user.name);
+    socket.emit("BID_PLACED", { 
+      itemId: id, 
+      bidAmount: newTotalBid, 
+      user: { email: user.email, name: user.name }
+    });  };
 
   return (
     <div className="app-container">
@@ -142,8 +169,7 @@ function App() {
               </div>
               <div className="profile-section" ref={dropdownRef}>
                 <div className="user-meta">
-                  <span className="pro-tag">{user.name || user.email}</span>
-                  <span className="account-type">{user.role === 'seller' ? 'Seller Account' : 'Pro Bidder'}</span>
+                  <span className="pro-tag">{user.name}</span>
                 </div>
 
                 <div className="avatar-circle" onClick={() => setShowDropdown(!showDropdown)}>
@@ -155,7 +181,6 @@ function App() {
                     <div className="dropdown-header">
                       <div className="name-row">
                         <strong>{user.name}</strong>
-                        <small className="role-tag">{user.role}</small>
                       </div>
                       <span className="user-email-text">{user.email}</span>
                     </div>

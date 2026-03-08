@@ -172,3 +172,36 @@
   .dashboard { padding: 1rem; }
   .auction-grid { grid-template-columns: 1fr; }
 }
+
+.bid-history-section {
+    background: #f8fafc;
+    padding: 0.75rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+  }
+  
+  .history-title {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 0.5rem;
+  }
+  
+  .history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  
+  .history-item {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    border-bottom: 1px dashed #e2e8f0;
+    padding-bottom: 2px;
+  }
+  
+  .h-name { color: var(--text-main); font-weight: 500; }
+  .h-amount { color: var(--success); font-weight: 700; }
+  .no-history { font-size: 0.75rem; color: var(--text-muted); font-style: italic; }

@@ -11,6 +11,8 @@ module.exports = (io) => {
             for (const key of keys) {
                 if (key.endsWith(':price') || key.includes(':bids') || key.includes(':history')) continue;
                 const data = await redisClient.hGetAll(key);
+                const historyData = await redisClient.lRange(`item:${itemId}:history`, 0, -1);
+                const history = historyData.map(entry => JSON.parse(entry));
                 items.push({
                     id: key.split(':')[1],
                     title: data.title,
@@ -18,7 +20,9 @@ module.exports = (io) => {
                     auctionEndTime: parseInt(data.auctionEndTime),
                     description: data.description,
                     lastBidder: data.lastBidder,
-                    seller: data.seller || null
+                    lastBidderName: data.lastBidderName || "No bids yet",
+                    seller: data.seller || null,
+                    history: history
                 });
             }
             res.json(items);
@@ -40,6 +44,7 @@ module.exports = (io) => {
                 currentBid: startPrice.toString(),
                 auctionEndTime: endTime.toString(),
                 lastBidder: 'System',
+                lastBidderName: 'No bids yet',
                 description: description || "No description",
                 seller: sellerEmail
             };

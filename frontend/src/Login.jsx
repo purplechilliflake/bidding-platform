@@ -85,13 +85,6 @@ function Login({ setUser, onClose }) {
               <label>Full Name</label>
               <input type="text" required onChange={e => setForm({ ...form, name: e.target.value })} />
             </div>
-            <div className="input-group">
-              <label>I want to:</label>
-              <select className="custom-input" onChange={e => setForm({ ...form, role: e.target.value })}>
-                <option value="bidder">Buy / Bid on items</option>
-                <option value="seller">Sell / Post items</option>
-              </select>
-            </div>
           </>
         )}
           
